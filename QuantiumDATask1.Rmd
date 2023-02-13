@@ -1,0 +1,19 @@
+---
+title: "Quantium DA Task1"
+author: "Santosh Reddy Edulapalle"
+date: "2023-02-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading the datasets
+```{r}
+#install.packages('readxl')
+library('readxl')
+trans <- read_excel('QVI_transaction_data.xlsx')
+head(trans)
+
+```
