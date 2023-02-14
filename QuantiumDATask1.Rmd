@@ -10,10 +10,151 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Loading the datasets
+
 ```{r}
 #install.packages('readxl')
 library('readxl')
 trans <- read_excel('QVI_transaction_data.xlsx')
+```
+
+Examine transaction data
+
+```{r}
+#showing head ( top 10 rows)
 head(trans)
+```
+```{r}
+#showing summary
+summary(trans)
+```
+```{r}
+#showing high level structure
+str(trans)
+```
+
+We can see that the DATE type is DOUBLE We need to convert it to DATE type
+
+```{r}
+typeof(trans$DATE)
+trans$DATE <- as.Date(trans$DATE,origin = '1899-12-30')
+typeof(trans$DATE)
+#examine structure
+str(trans)
+```
+
+Checking PROD_NAME
+Since PROD_NAME is a name given to individual object, we will factorise it and make them into groups.
+
+```{r}
+trans$PROD_NAME_FACTOR <- factor(trans$PROD_NAME)
+summary(trans$PROD_NAME_FACTOR)
 
 ```
+
+```{r}
+summary(trans)
+str(trans)
+```
+
+
+Examine product words in PROD_NAME
+
+```{r}
+library(data.table)
+productWords <- data.table(unlist(strsplit(unique(trans$PROD_NAME), " ")))
+setnames(productWords, 'words')
+#productWords
+```
+
+Removing words that contain numericals
+
+```{r}
+numerical.validation <- grepl('[1-9]',productWords[,words])
+productWords <- productWords[numerical.validation==FALSE]
+#productWords
+```
+
+Removing words that contain special character '&'
+
+```{r}
+scAnd.validation <- grepl('&',productWords[,words])
+productWords <- productWords[scAnd.validation==FALSE]
+```
+
+Removing words that contain special character '/'
+
+```{r}
+sc.validation <- grepl('/',productWords[,words])
+productWords <- productWords[sc.validation==FALSE]
+```
+
+Counting frequencies
+
+```{r}
+#factorising words
+productWords <- factor(productWords$words)
+```
+
+summary
+
+```{r}
+summary(productWords)
+```
+```{r}
+trans <- data.table(trans)
+```
+
+```{r}
+# Remove salsa products
+trans[, SALSA := grepl("salsa", tolower(PROD_NAME))]
+trans <- trans[SALSA == FALSE, ][, SALSA := NULL]
+```
+
+checking summary
+
+```{r}
+summary(trans)
+```
+
+checking for outliers : By seeing summary of data, we can see that the max value of PROD_QTY is more that 3rd quartile+ 1.5 IQR
+
+
+Lets confirm this with a boxplot
+
+```{r}
+boxplot(trans$PROD_QTY)
+```
+
+Yes we can confirm existance of outliers.
+
+```{r}
+library(dplyr)
+filter(trans,trans$PROD_QTY==200)
+```
+
+We have 2 records where the PROD_QTY is 200. Both are made by same customer 226000.
+Let's see if he has any other transactions
+
+```{r}
+filter(trans,trans$LYLTY_CARD_NBR==226000)
+
+```
+
+Removing customer - 226000 from further analysis
+
+```{r}
+#trans[,trans$LYLTY_CARD_NBR != 226000]
+trans <- trans[trans[,trans$LYLTY_CARD_NBR != 226000]]
+```
+
+
+Checking summary 
+
+```{r}
+summary(trans)
+```
+
+```{r}
+boxplot(trans$PROD_QTY)
+```
+
