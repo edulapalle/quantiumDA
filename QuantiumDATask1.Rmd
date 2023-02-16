@@ -204,12 +204,12 @@ filter(trans,is.na(trans$STORE_NBR) == TRUE)
 We can see that the date 2018-12-25 is missing.
 
 
+Counting number of transactions per date.
+
 ```{r}
 transactions_per_date <- trans[, as.Date(trans$DATE, format = "%Y-%m-%d")]
-#transactions_per_date
 transactions_per_date <- table(transactions_per_date)
 transactions_per_date <- data.table(transactions_per_date)
-#transactions_per_date
 ```
 
 
@@ -217,6 +217,7 @@ Plotting
 
 
 ```{r}
+library(ggplot2)
 # Setting plot themes to format graphs
 theme_set(theme_bw())
 theme_update(plot.title = element_text(hjust = 0.5))
@@ -227,3 +228,20 @@ ggplot(transactions_per_date, aes(x = as.Date(transactions_per_date), y = N)) +
  scale_x_date(breaks = "1 month") +
  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
+
+We can see some anomaly December.
+Creating December chart to further investigate.
+
+```{r}
+x = subset(transactions_per_date, format.Date(transactions_per_date,"%m")=="12")
+ggplot(x, aes(x = as.Date(transactions_per_date), y = N)) +
+ geom_line() +
+ labs(x = "Day", y = "Number of transactions", title = "Transactions over time") +
+ scale_x_date(breaks = "1 day") +
+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+We can see that on Dec 25 we do not have any transaction. Because it was a missing value.
+Sales got increased until Christmas day and on Christmas day shops were closed.
+
+
