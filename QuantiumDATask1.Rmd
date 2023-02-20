@@ -244,4 +244,34 @@ ggplot(x, aes(x = as.Date(transactions_per_date), y = N)) +
 We can see that on Dec 25 we do not have any transaction. Because it was a missing value.
 Sales got increased until Christmas day and on Christmas day shops were closed.
 
+Creating new features: Pack size
+
+```{r Create pack size}
+library(readr)
+# creating new Pack size feature in trans by parasing our numbers from product names.
+trans[, PACK_SIZE := parse_number(PROD_NAME)]
+# Always check your output
+# Let's check if the pack sizes look sensible
+trans[, .N, PACK_SIZE][order(PACK_SIZE)]
+```
+
+The largest size is 380g and the smallest size is 70g - seems sensible!
+
+Histogram of Pack size.
+
+```{r}
+x1 <- trans[,trans$PACK_SIZE]
+x1 <- table(x1)
+x1 <- data.table(x1)
+
+```
+
+
+```{r}
+ggplot(x1,aes(x = x1,y = N)) + geom_line()
+
+```
+```{r}
+hist(trans$PACK_SIZE,breaks=5)
+```
 
