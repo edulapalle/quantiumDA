@@ -244,6 +244,11 @@ ggplot(x, aes(x = as.Date(transactions_per_date), y = N)) +
 We can see that on Dec 25 we do not have any transaction. Because it was a missing value.
 Sales got increased until Christmas day and on Christmas day shops were closed.
 
+```{r}
+# removing the Christmas day
+trans <- subset(trans,trans$DATE != '2018-12-25')
+```
+
 Creating new features: Pack size
 
 ```{r Create pack size}
@@ -252,6 +257,7 @@ library(readr)
 trans[, PACK_SIZE := parse_number(PROD_NAME)]
 # Always check your output
 # Let's check if the pack sizes look sensible
+#.N is a spl variable in data.table used to represent # of observations in a group along with by = pack_size
 trans[, .N, PACK_SIZE][order(PACK_SIZE)]
 ```
 
@@ -260,18 +266,54 @@ The largest size is 380g and the smallest size is 70g - seems sensible!
 Histogram of Pack size.
 
 ```{r}
-x1 <- trans[,trans$PACK_SIZE]
+x1 <- trans$PACK_SIZE
 x1 <- table(x1)
-x1 <- data.table(x1)
-
+x1<- data.table(x1)
+colnames(x1) <- c('Pack_size','Transactions')
 ```
-
 
 ```{r}
-ggplot(x1,aes(x = x1,y = N)) + geom_line()
+barplot(height = x1$Transactions,
+        names.arg = x1$Pack_size,
+        main="Histogram of Pack_size to Transactions",
+        xlab = "Pack size", 
+        ylab= "# Transactions")
+```
+
+Creating brand names
+
+```{r}
+#Here we are parsing the first word of the sentence using word() from stringr
+trans$Brand_name <- word(trans$PROD_NAME, 1)
+```
+
+```{r}
+#checking brands results
+trans[, .N, Brand_name][order(Brand_name)]
+```
+
+Some of the brand names look like they are of the same brands - such as RED and
+RRD, NCC and Natural Chip Co, Smith and Smiths, infuzions and infzns, Snbts and Sunbites, WW and Woolworths, Dorito and Doritos, Grain and GrnWves
+Let's combine these together.
+
+```{r}
+#clean brand names
+trans[Brand_name == "Red", Brand_name := "RRD"]
+trans[Brand_name == "Dorito", Brand_name := "Doritos"]
+trans[Brand_name == "GrnWves", Brand_name := "Grain Waves"]
+trans[Brand_name == "Grain", Brand_name := "Grain Waves"]
+trans[Brand_name == "Natural", Brand_name := "NCC"]
+trans[Brand_name == "Smith", Brand_name := "Smiths"]
+trans[Brand_name == "Infzns", Brand_name := "Infuzions"]
+trans[Brand_name == "Snbts", Brand_name := "Sunbites"]
+trans[Brand_name == "Woolworths", Brand_name := "WW"]
 
 ```
+
 ```{r}
-hist(trans$PACK_SIZE,breaks=5)
+#checking brands results
+trans[, .N, Brand_name][order(Brand_name)]
 ```
+
+
 
