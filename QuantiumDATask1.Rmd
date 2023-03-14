@@ -9,7 +9,17 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Loading the datasets
+#### Load required libraries
+```{r}
+library(data.table)
+library(ggplot2)
+library(ggmosaic)
+library(readr)
+library(stringr)
+library(dplyr)
+```
+
+#### Loading the dataset
 
 ```{r}
 #install.packages('readxl')
@@ -17,7 +27,11 @@ library('readxl')
 trans <- read_excel('QVI_transaction_data.xlsx')
 ```
 
-Examine transaction data
+## Exploratory data analysis
+The first step in any analysis is to first understand the data. Let's take a look
+at each of the datasets provided.
+
+### Examine transaction data
 
 ```{r}
 #showing head ( top 10 rows)
@@ -31,9 +45,9 @@ summary(trans)
 #showing high level structure
 str(trans)
 ```
-
+#### Convert DATE column to a date format
 We can see that the DATE type is DOUBLE We need to convert it to DATE type
-
+CSV and Excel integer dates begin on 30 Dec 1899
 ```{r}
 typeof(trans$DATE)
 trans$DATE <- as.Date(trans$DATE,origin = '1899-12-30')
@@ -42,7 +56,7 @@ typeof(trans$DATE)
 str(trans)
 ```
 
-Checking PROD_NAME
+#### Examine PROD_NAME
 Since PROD_NAME is a name given to individual object, we will factorise it and make them into groups.
 
 ```{r}
@@ -56,8 +70,8 @@ summary(trans)
 str(trans)
 ```
 
-
-Examine product words in PROD_NAME
+#### Text analysis
+### Examine product words in PROD_NAME
 
 ```{r}
 library(data.table)
@@ -66,7 +80,7 @@ setnames(productWords, 'words')
 #productWords
 ```
 
-Removing words that contain numericals
+### Removing words that contain numerical
 
 ```{r}
 numerical.validation <- grepl('[1-9]',productWords[,words])
@@ -74,21 +88,21 @@ productWords <- productWords[numerical.validation==FALSE]
 #productWords
 ```
 
-Removing words that contain special character '&'
+### Removing words that contain special character '&'
 
 ```{r}
 scAnd.validation <- grepl('&',productWords[,words])
 productWords <- productWords[scAnd.validation==FALSE]
 ```
 
-Removing words that contain special character '/'
+### Removing words that contain special character '/'
 
 ```{r}
 sc.validation <- grepl('/',productWords[,words])
 productWords <- productWords[sc.validation==FALSE]
 ```
 
-Counting frequencies
+### Counting frequencies
 
 ```{r}
 #factorising words
@@ -104,19 +118,21 @@ summary(productWords)
 trans <- data.table(trans)
 ```
 
+#### Remove salsa products
 ```{r}
 # Remove salsa products
 trans[, SALSA := grepl("salsa", tolower(PROD_NAME))]
 trans <- trans[SALSA == FALSE, ][, SALSA := NULL]
 ```
 
-checking summary
+#### Summarise the data to check for nulls and possible outliers
 
 ```{r}
 summary(trans)
 ```
 
-checking for outliers : By seeing summary of data, we can see that the max value of PROD_QTY is more that 3rd quartile+ 1.5 IQR
+### Checking for outliers
+By seeing summary of data, we can see that the maximum value of PROD_QTY is more that (3rd quartile + 1.5*IQR)
 
 
 Lets confirm this with a boxplot
@@ -140,6 +156,11 @@ filter(trans,trans$LYLTY_CARD_NBR==226000)
 
 ```
 
+It looks like this customer has only had the two transactions over the year and is
+not an ordinary retail customer. The customer might be buying chips for commercial
+purposes instead. We'll remove this loyalty card number from further analysis.
+
+#### Filter out the customer based on the loyalty card number
 Removing customer - 226000 from further analysis
 
 ```{r}
@@ -147,8 +168,8 @@ Removing customer - 226000 from further analysis
 trans <- trans[trans[,trans$LYLTY_CARD_NBR != 226000]]
 ```
 
+#### Re-examine transaction data
 
-Checking summary 
 
 ```{r}
 summary(trans)
@@ -158,6 +179,7 @@ summary(trans)
 boxplot(trans$PROD_QTY)
 ```
 
+#### Count the number of transactions by date
 Let us factorise the dates
 
 ```{r}
@@ -170,7 +192,7 @@ summary(trans)
 str(trans)
 ```
 
-There are 364 unique dates where transaction happend.
+There are 364 unique dates where transaction happened.
 We will create a new column with dates from min to max i.e., 2018-07-01 to 2019-06-30
 and then join this with trans to find that missing date.
 
@@ -204,7 +226,7 @@ filter(trans,is.na(trans$STORE_NBR) == TRUE)
 We can see that the date 2018-12-25 is missing.
 
 
-Counting number of transactions per date.
+#### Count the number of transactions by date
 
 ```{r}
 transactions_per_date <- trans[, as.Date(trans$DATE, format = "%Y-%m-%d")]
@@ -213,15 +235,15 @@ transactions_per_date <- data.table(transactions_per_date)
 ```
 
 
-Plotting
+#### Plot transactions over time
 
 
 ```{r}
 library(ggplot2)
-# Setting plot themes to format graphs
+#### Setting plot themes to format graphs
 theme_set(theme_bw())
 theme_update(plot.title = element_text(hjust = 0.5))
-# Plot transactions over time
+#### Plot transactions over time
 ggplot(transactions_per_date, aes(x = as.Date(transactions_per_date), y = N)) +
  geom_line() +
  labs(x = "Day", y = "Number of transactions", title = "Transactions over time") +
@@ -229,7 +251,8 @@ ggplot(transactions_per_date, aes(x = as.Date(transactions_per_date), y = N)) +
  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
-We can see some anomaly December.
+#### Filter to December and look at individual days
+We can see some anomaly in December.
 Creating December chart to further investigate.
 
 ```{r}
@@ -249,7 +272,9 @@ Sales got increased until Christmas day and on Christmas day shops were closed.
 trans <- subset(trans,trans$DATE != '2018-12-25')
 ```
 
-Creating new features: Pack size
+## Feature Engineering
+#### Creating new features: Pack size
+
 
 ```{r Create pack size}
 library(readr)
@@ -263,16 +288,14 @@ trans[, .N, PACK_SIZE][order(PACK_SIZE)]
 
 The largest size is 380g and the smallest size is 70g - seems sensible!
 
-Histogram of Pack size.
+#### Histogram of Pack size.
 
 ```{r}
 x1 <- trans$PACK_SIZE
 x1 <- table(x1)
 x1<- data.table(x1)
 colnames(x1) <- c('Pack_size','Transactions')
-```
 
-```{r}
 barplot(height = x1$Transactions,
         names.arg = x1$Pack_size,
         main="Histogram of Pack_size to Transactions",
@@ -280,18 +303,17 @@ barplot(height = x1$Transactions,
         ylab= "# Transactions")
 ```
 
-Creating brand names
+#### Creating new features: Brand_name
 
 ```{r}
 #Here we are parsing the first word of the sentence using word() from stringr
 trans$Brand_name <- word(trans$PROD_NAME, 1)
-```
 
-```{r}
 #checking brands results
 trans[, .N, Brand_name][order(Brand_name)]
 ```
 
+#### Clean brand names
 Some of the brand names look like they are of the same brands - such as RED and
 RRD, NCC and Natural Chip Co, Smith and Smiths, infuzions and infzns, Snbts and Sunbites, WW and Woolworths, Dorito and Doritos, Grain and GrnWves
 Let's combine these together.
@@ -314,6 +336,94 @@ trans[Brand_name == "Woolworths", Brand_name := "WW"]
 #checking brands results
 trans[, .N, Brand_name][order(Brand_name)]
 ```
+
+
+
+#### Loading dataset
+
+```{r load customer data}
+cust = read.csv('QVI_purchase_behaviour.csv')
+```
+
+### Examining customer data
+```{r}
+summary(cust)
+str(cust)
+```
+
+```{r fig.width=10}
+#distribution of lifestage and premium_customer
+ggplot(data = cust,aes(x = LIFESTAGE))+geom_histogram(stat = "count")
+ggplot(data = cust,aes(x = PREMIUM_CUSTOMER))+geom_histogram(stat = "count")
+```
+
+#### Merge transaction data to customer data
+
+```{r }
+#### Merge transaction data to customer data
+# all.x = T implies full left join
+df <- merge(trans, cust, all.x = TRUE)
+```
+
+As the number of rows in `data` is the same as that of `transactionData`, we can be
+sure that no duplicates were created. This is because we created `data` by setting
+`all.x = TRUE` (in other words, a left join) which means take all the rows in
+`transactionData` and find rows with matching values in shared columns and then
+joining the details in these rows to the `x` or the first mentioned table.
+
+```{r Check for missing customer details}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+ggplot(data = cust,aes(x = LIFESTAGE,fill = PREMIUM_CUSTOMER))+geom_histogram(stat = "count")
+```
+
+
+Summary and Structure of Customer Data
+
+```{r}
+summary(cust)
+str(cust)
+```
+
+
+```{r}
+#factors
+x <- data.frame(cust)
+x$LYLTY_CARD_NBR <- as.factor(x$LYLTY_CARD_NBR)
+x$LIFESTAGE <- as.factor(x$LIFESTAGE)
+x$PREMIUM_CUSTOMER <- as.factor(x$PREMIUM_CUSTOMER)
+```
+
+```{r}
+summary(x)
+str(x)
+```
+
+
+
+
+```{r fig.width = 15, fig.align = "center"}
+#### Total sales by LIFESTAGE and PREMIUM_CUSTOMER
+# Over to you! Calculate the summary of sales by those dimensions and create a plot.
+ggplot(data = x,aes(x = LIFESTAGE,fill = PREMIUM_CUSTOMER))+geom_histogram(stat = "count")
+```
+
 
 
 
