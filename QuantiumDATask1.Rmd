@@ -363,6 +363,8 @@ ggplot(data = cust,aes(x = PREMIUM_CUSTOMER))+geom_histogram(stat = "count")
 #### Merge transaction data to customer data
 # all.x = T implies full left join
 df <- merge(trans, cust, all.x = TRUE)
+
+#df$LYLTY_CARD_NBR <- as.factor(df$LYLTY_CARD_NBR)
 ```
 
 As the number of rows in `data` is the same as that of `transactionData`, we can be
@@ -371,59 +373,190 @@ sure that no duplicates were created. This is because we created `data` by setti
 `transactionData` and find rows with matching values in shared columns and then
 joining the details in these rows to the `x` or the first mentioned table.
 
+Checking if any transactions did not have a matched customer.
+
 ```{r Check for missing customer details}
+df <- df[!DATE == '2018-12-25']
+```
 
+#### Saving dataset
+```{r Code to save dataset as a csv}
+filePath <- "/Users/santosh/Documents/QuantiumDA/quantiumDA/"
+fwrite(df, paste0(filePath,"QVI_data.csv"))
 ```
 
 
+Data exploration is now complete!
 
+## Data analysis on customer segments 
 
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-ggplot(data = cust,aes(x = LIFESTAGE,fill = PREMIUM_CUSTOMER))+geom_histogram(stat = "count")
-```
-
-
-Summary and Structure of Customer Data
-
-```{r}
-summary(cust)
-str(cust)
-```
-
-
-```{r}
-#factors
-x <- data.frame(cust)
-x$LYLTY_CARD_NBR <- as.factor(x$LYLTY_CARD_NBR)
-x$LIFESTAGE <- as.factor(x$LIFESTAGE)
-x$PREMIUM_CUSTOMER <- as.factor(x$PREMIUM_CUSTOMER)
-```
-
-```{r}
-summary(x)
-str(x)
-```
-
-
-
-
-```{r fig.width = 15, fig.align = "center"}
 #### Total sales by LIFESTAGE and PREMIUM_CUSTOMER
-# Over to you! Calculate the summary of sales by those dimensions and create a plot.
-ggplot(data = x,aes(x = LIFESTAGE,fill = PREMIUM_CUSTOMER))+geom_histogram(stat = "count")
+
+```{r fig.width = 12,fig.align = 'center'}
+ggplot(data = df,aes(x = LIFESTAGE,y = TOT_SALES, fill = PREMIUM_CUSTOMER)) + 
+  geom_bar(stat = 'identity', position = "dodge") 
+```
+
+
+Sales are coming mainly from Budget - older families, Mainstream - young
+singles/couples, and Mainstream - retirees
+
+same output another method ( creating separate df of the required data)
+
+```{r}
+
+sales_summary <- df %>%
+  group_by(LIFESTAGE, PREMIUM_CUSTOMER) %>%
+  summarise(total_sales = sum(TOT_SALES))
+
+```
+
+```{r}
+
+ggplot(sales_summary, aes(x = LIFESTAGE, y = total_sales, fill = PREMIUM_CUSTOMER)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Total Sales by LIFESTAGE and PREMIUM_CUSTOMER") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+#### Number of customers by LIFESTAGE and PREMIUM_CUSTOMER
+
+```{r}
+
+cust_summary <- df %>% group_by(LIFESTAGE, PREMIUM_CUSTOMER) %>%
+  summarise(cust_count = n())
+
+#n() is a function in dplyr that counts the number of observations in a group.
+
+```
+
+```{r}
+
+ggplot(cust_summary, aes(x = LIFESTAGE, y = cust_count, fill = PREMIUM_CUSTOMER)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Number of Customers by LIFESTAGE and PREMIUM_CUSTOMER") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+There are more Mainstream - young singles/couples and Mainstream - retirees who buy
+chips. This contributes to there being more sales to these customer segments but
+this is not a major driver for the Budget - Older families segment.
+
+Higher sales may also be driven by more units of chips being bought per customer.
+Let's have a look at this next.
+
+#### Average number of units per customer by LIFESTAGE and PREMIUM_CUSTOMER
+
+```{r}
+avg_cust <- df %>% group_by(LIFESTAGE , PREMIUM_CUSTOMER ) %>% 
+  summarize(avg_cust_count = mean(PROD_QTY))
+```
+
+```{r fig.width = 10, fig.align = "center"}
+#### Average number of units per customer by LIFESTAGE and PREMIUM_CUSTOMER
+ggplot(data = avg_cust,aes(x = LIFESTAGE,y = avg_cust_count,fill = PREMIUM_CUSTOMER)) +   geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Average number of units per customer by LIFESTAGE and PREMIUM_CUSTOMER") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Older families and young families in general buy more chips per customer.
+
+Let's also investigate the average price per unit chips bought for each customer segment as this is also a driver of total sales.
+
+#### Average price per unit by LIFESTAGE and PREMIUM_CUSTOMER
+```{r}
+avg_ppu <- df %>% group_by(LIFESTAGE , PREMIUM_CUSTOMER) %>%
+  summarise(avg_price = (sum(TOT_SALES)/sum(PROD_QTY)))
 ```
 
 
 
+```{r fig.width = 10, fig.align = "center"}
+#### Average price per unit by LIFESTAGE and PREMIUM_CUSTOMER
+ggplot(data = avg_ppu,aes(x = LIFESTAGE,y = avg_price,fill = PREMIUM_CUSTOMER)) +   geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Average price per unit by LIFESTAGE and PREMIUM_CUSTOMER") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Mainstream midage and young singles and couples are more willing to pay more per
+packet of chips compared to their budget and premium counterparts. This may be due
+to premium shoppers being more likely to buy healthy snacks and when they buy
+chips, this is mainly for entertainment purposes rather than their own consumption.
+This is also supported by there being fewer premium midage and young singles and
+couples buying chips compared to their mainstream counterparts.
+
+#### Perform an independent t-test
+
+Here we are performing t-test between Mainstream vs (Premium or Budget) for Midage and young - singles and couples.
+
+```{r t-test: mainstream vs premium}
+#### Perform an independent t-test between mainstream vs premium and budget midage and young singles and couples
+# Over to you! Perform a t-test to see if the difference is significant.
+main_premium <- subset(avg_ppu, PREMIUM_CUSTOMER %in% c("Mainstream", "Premium")&LIFESTAGE %in% c("YOUNG SINGLES/COUPLES","MIDAGE SINGLES/COUPLES"))
+
+t.test(avg_price~PREMIUM_CUSTOMER, data = main_premium)
+```
+
+```{r t-test: mainstream vs budget}
+#### Perform an independent t-test between mainstream vs premium and budget midage and young singles and couples
+# Over to you! Perform a t-test to see if the difference is significant.
+main_budget <- subset(avg_ppu, PREMIUM_CUSTOMER %in% c("Mainstream","Budget")&LIFESTAGE %in% c("YOUNG SINGLES/COUPLES","MIDAGE SINGLES/COUPLES"))
+
+t.test(avg_price~PREMIUM_CUSTOMER, data = main_budget)
+```
+
+Both the t-test results suggest that p-value is less than $\alpha = 0.05$ and we accept alternate hypothesis that there is some difference between mean between the groups mainstream vs premium or budget.
+
+the unit price for mainstream, young and mid-age singles and couples are significantly higher than that of budget or premium, young and midage singles and couples.
+
+
+#### Deep dive into Mainstream, young singles/couples 
+
+We might want to target customer segments that contribute the most to sales to
+retain them or further increase sales. Let's look at Mainstream - young
+singles/couples. For instance, let's find out if they tend to buy a particular
+brand of chips.
+
+```{r}
+library(arules)
+library(arulesViz)
+# Subset data to Mainstream, young singles/couples segment
+main_single <- subset(df,PREMIUM_CUSTOMER == "Mainstream" & LIFESTAGE == "YOUNG SINGLES/COUPLES")
+# Create transaction object
+transB <- as(main_single$Brand_name, "transactions")
+# Perform affinity analysis using Apriori algorithm
+rules <- apriori(transB, parameter = list(supp = 0.001, conf = 0.8))
+# Visualize the rules
+plot(rules, method = "graph")
+```
+
+
+```{r fig.align = "center"}
+#### Deep dive into Mainstream, young singles/couples
+
+```
+
+
+```{r}
+# Load required libraries
+
+library(arules)
+library(arulesViz)
+
+# Subset data to Mainstream, young singles/couples segment
+cust_seg <- subset(data, PREMIUM_CUSTOMER == "Mainstream" & LIFESTAGE == "YOUNG SINGLES/COUPLES")
+
+# Create transaction object
+trans <- as(cust_seg$Brand_name, "transactions")
+
+# Perform affinity analysis using Apriori algorithm
+rules <- apriori(trans, parameter = list(supp = 0.001, conf = 0.8))
+
+# Visualize the rules
+plot(rules, method = "graph")
+
+```
 
