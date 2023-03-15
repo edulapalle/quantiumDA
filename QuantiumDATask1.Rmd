@@ -17,6 +17,8 @@ library(ggmosaic)
 library(readr)
 library(stringr)
 library(dplyr)
+library(arules)
+library(arulesViz)
 ```
 
 #### Loading the dataset
@@ -520,43 +522,45 @@ retain them or further increase sales. Let's look at Mainstream - young
 singles/couples. For instance, let's find out if they tend to buy a particular
 brand of chips.
 
-```{r}
-library(arules)
-library(arulesViz)
-# Subset data to Mainstream, young singles/couples segment
-main_single <- subset(df,PREMIUM_CUSTOMER == "Mainstream" & LIFESTAGE == "YOUNG SINGLES/COUPLES")
-# Create transaction object
-transB <- as(main_single$Brand_name, "transactions")
-# Perform affinity analysis using Apriori algorithm
-rules <- apriori(transB, parameter = list(supp = 0.001, conf = 0.8))
-# Visualize the rules
-plot(rules, method = "graph")
-```
 
 
 ```{r fig.align = "center"}
-#### Deep dive into Mainstream, young singles/couples
-
-```
 
 
-```{r}
-# Load required libraries
+#get brand baskets
+Baskets <- df %>% group_by(PREMIUM_CUSTOMER == "Mainstream" & LIFESTAGE == "YOUNG SINGLES/COUPLES") %>%
+  summarise(basket = list(Brand_name))
 
-library(arules)
-library(arulesViz)
+str(Baskets)
 
-# Subset data to Mainstream, young singles/couples segment
-cust_seg <- subset(data, PREMIUM_CUSTOMER == "Mainstream" & LIFESTAGE == "YOUNG SINGLES/COUPLES")
-
-# Create transaction object
-trans <- as(cust_seg$Brand_name, "transactions")
+#compute transactions
+transx <- as(Baskets$basket,"transactions")
 
 # Perform affinity analysis using Apriori algorithm
-rules <- apriori(trans, parameter = list(supp = 0.001, conf = 0.8))
+rules <- apriori(transx, parameter = list(supp = 0.5, conf = 0.9, target = "rules"))
+
+#summary of rules
+summary(rules)
+
+#Inspect rules with the highest lift.
+inspect(head(sort(rules, by = "lift")))
 
 # Visualize the rules
 plot(rules, method = "graph")
 
 ```
+
+Here we are perfoming apriori analysis to find out which brands are associated with each other and most importantly which brand does Mainstream and Young couples / singles prefer most. 
+here we are using a support of 0.5 and confidence of 0.9
+
+As we can see from the results brands like Burger, Tyrrells, Twisties, Tostitos, Thins, are among the top 5 buyed brands in these two customer segements. 
+
+
+
+Let's also find out if our target segment tends to buy larger packs of chips.
+```{r fig.align = "center"}
+#### Preferred pack size compared to the rest of the population
+# Over to you! Do the same for pack size.
+```
+
 
