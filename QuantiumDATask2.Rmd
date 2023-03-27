@@ -1,0 +1,109 @@
+---
+title: "QuantiumDATask2"
+author: "Santosh Reddy Edulapalle"
+date: "2023-03-27"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load required libraries and datasets
+
+```{r 0. Load libraries, include = FALSE}
+library(data.table)
+library(ggplot2)
+library(tidyr)
+```
+
+```{r 1. Read in data from previous module}
+filePath <- "/Users/santosh/Documents/QuantiumDA/quantiumDA/"
+df <- fread(paste0(filePath,"QVI_data.csv"))
+#### Set themes for plots
+theme_set(theme_bw())
+theme_update(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+head(df)
+```
+
+## Select control stores
+The client has selected store numbers 77, 86 and 88 as trial stores and want
+control stores to be established stores that are operational for the entire
+observation period.
+We would want to match trial stores to control stores that are similar to the trial
+store prior to the trial period of Feb 2019 in terms of :
+- Monthly overall sales revenue
+- Monthly number of customers
+- Monthly number of transactions per customer
+Let's first create the metrics of interest and filter to stores that are present
+throughout the pre-trial period.
+
+
+```{r Select control stores}
+#### Calculate these measures over time for each store
+#### Add a new month ID column in the data with the format yyyymm.
+
+df <- df[, YEARMONTH := (format(as.Date(df$DATE,format = "%Y/%m/%d"),paste("%Y","%m",sep = ""))) ]
+
+#### Next, we define the measure calculations to use during the analysis.
+
+# Over to you! For each store and month calculate total sales, number of customers,transactions per customer, chips per customer and the average price per unit.
+## Hint: you can use uniqueN() to count distinct values in a column
+measureOverTime <- df[, .(totSales = sum(TOT_SALES), 
+                          nCustomers = uniqueN(LYLTY_CARD_NBR), 
+                          nTxnPerCust = length(unique(TXN_ID))/uniqueN(LYLTY_CARD_NBR), 
+                          nChipsPerTxn = sum(PROD_QTY)/length(unique(TXN_ID)), 
+                          avgPricePerUnit = (sum(TOT_SALES)/sum(PROD_QTY))
+                            ), 
+                      by = .(STORE_NBR,YEARMONTH) ][order(STORE_NBR,YEARMONTH)]
+#### Filter to the pre-trial period and stores with full observation periods
+storesWithFullObs <- unique(measureOverTime[, .N, STORE_NBR][N == 12, STORE_NBR])
+preTrialMeasures <- measureOverTime[YEARMONTH < 201902 & STORE_NBR %in% storesWithFullObs, ]
+```
+
+
+Now we need to work out a way of ranking how similar each potential control store
+is to the trial store. We can calculate how correlated the performance of each
+store is to the trial store.
+Let's write a function for this so that we don't have to calculate this for each
+trial store and control store pair.
+```{r Create function to calculate correlation}
+#### Over to you! Create a function to calculate correlation for a measure, looping through each control store.
+#### Let's define inputTable as a metric table with potential comparison stores, metricCol as the store metric used to calculate correlation on, and storeComparison as the store number of the trial store.
+
+calculateCorrelation <- function(inputTable, metricCol, storeComparison) {
+calcCorrTable = data.table(Store1 = numeric(), Store2 = numeric(), corr_measure = numeric())
+ storeNumbers <-
+
+ for (i in storeNumbers) {
+ calculatedMeasure = data.table("Store1" = , "Store2" = , "corr_measure" = )
+
+ calcCorrTable <- rbind(calcCorrTable, calculatedMeasure)
+ }
+ return(calcCorrTable)
+}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
